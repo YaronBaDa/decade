@@ -168,15 +168,20 @@
     text-align: center; line-height: 1;
     color: var(--ink); letter-spacing: -0.02em;
     cursor: pointer;
+    border: 1px solid var(--ink-muted);
+    padding: 12px 32px;
+    display: inline-block;
+    align-self: center;
   }
   .year-hint {
     text-align: center;
     font-size: 11px; color: var(--ink-faint);
     letter-spacing: 0.12em; text-transform: uppercase;
-    margin-top: -6px;
+    margin-top: 4px;
   }
   .slider-wrap {
     position: relative; padding: 6px 0;
+    margin-top: 8px;
   }
   .slider-track {
     width: 100%; height: 2px;
@@ -184,31 +189,38 @@
     position: relative;
   }
   .slider-range {
-    position: absolute; left: 0; top: -1px;
-    height: 4px; background: var(--accent-dim);
-    border-radius: 2px;
+    position: absolute; left: 0; top: 0;
+    height: 2px; background: var(--accent-dim);
+    border-radius: 1px;
   }
   input[type=range] {
     -webkit-appearance: none; appearance: none;
-    width: 100%; height: 4px;
-    background: transparent; position: relative; z-index: 2;
-    margin: -3px 0 0;
+    width: 100%; height: 2px;
+    background: transparent; position: absolute; top: 0; left: 0;
+    margin: 0; padding: 0;
   }
   input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
     width: 20px; height: 20px;
     border-radius: 50%; border: 2px solid var(--ink);
     background: var(--bg); cursor: pointer;
+    margin-top: -9px;
   }
   input[type=range]::-moz-range-thumb {
     width: 20px; height: 20px;
     border-radius: 50%; border: 2px solid var(--ink);
     background: var(--bg); cursor: pointer;
   }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 2px; background: transparent;
+  }
+  input[type=range]::-moz-range-track {
+    height: 2px; background: transparent;
+  }
   .slider-labels {
     display: flex; justify-content: space-between;
     font-size: 12px; color: var(--ink-faint);
-    margin-top: 6px;
+    margin-top: 12px;
   }
   .guess-input {
     display: flex; gap: 0;
@@ -612,11 +624,6 @@
           <input type="range" id="year-slider" min="1935" max="2020" value="1977" oninput="onSliderChange(this.value)">
           <div class="slider-labels"><span>1935</span><span>2020</span></div>
         </div>
-        <div class="guess-input" id="input-mode" style="display:none">
-          <input type="number" id="year-input" placeholder="Enter year" min="1935" max="2020">
-          <button onclick="submitGuess()">Submit</button>
-        </div>
-        <div class="toggle-mode" id="mode-toggle" onclick="toggleMode()">Switch to Numeric Input</div>
         <button class="submit-btn" onclick="submitGuess()">Submit</button>
       </div>
     </div>
@@ -689,7 +696,6 @@
 
 let currentPhoto = 0;
 let guesses = [];
-let useSlider = true;
 let zoomScale = 1.0;
 let dailyPhotos = [];
 let audioCtx = null;
@@ -747,7 +753,6 @@ function loadPhoto() {
   $('game-status').innerHTML = (currentPhoto + 1) + ' / 5 \u00b7 <strong>' + getTotalPoints() + ' PTS</strong>';
   $('year-slider').value = 1977;
   $('year-display').textContent = '1977';
-  $('year-input').value = '';
   updateSliderRange(1977);
 }
 
@@ -784,7 +789,7 @@ function focusInput() {
 }
 
 function submitGuess() {
-  const val = useSlider ? parseInt($('year-slider').value) : parseInt($('year-input').value);
+  const val = parseInt($('year-slider').value);
   if (!val || val < 1935 || val > 2020) return;
   guesses.push(val);
   showReveal();
@@ -1045,15 +1050,6 @@ function zoomOut() {
   $('game-img').style.transform = 'scale(' + zoomScale + ')';
   $('zoom-level').textContent = zoomScale.toFixed(1) + '\u00d7';
 }
-function zoomReset() {
-  zoomScale = 1;
-  $('game-img').style.transform = 'scale(1)';
-  $('zoom-level').textContent = '1.0\u00d7';
-}
-
-$('year-input').addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') submitGuess();
-});
 </script>
 </body>
 </html>
