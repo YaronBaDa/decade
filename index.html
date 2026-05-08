@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0c0c0c">
+<meta name="description" content="Decade — a daily visual puzzle game. Guess the year of photographs.">
+<title>Decade — Daily Visual Puzzle</title>
+<link rel="manifest" href="manifest.json?v=3">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #0c0c0c; --bg-elevated: #141414; --ink: #f0f0f0;
+    --ink-muted: #888; --ink-faint: #555; --accent: #e8e0d0;
+    --accent-dim: #c9b896; --green: #6aaa64; --yellow: #c9b458;
+    --orange: #d68c45; --amber: #c9a96e; --cool: #7a8a9a;
+    --border: #222; --red: #c45c5c;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-serif: Georgia, "Times New Roman", Times, serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--font-sans); line-height: 1.45;
+    -webkit-font-smoothing: antialiased; overflow: hidden;
+    height: 100vh; height: 100dvh;
+  }
+  #app {
+    max-width: 900px; margin: 0 auto;
+    height: 100vh; height: 100dvh;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .screen {
+    display: none; flex-direction: column;
+    height: 100vh; height: 100dvh;
+    overflow: hidden;
+  }
+  .screen.active { display: flex; }
+
+  /* ===== HEADER ===== */
+  .app-header {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 12px 20px;
+    flex-shrink: 0; z-index: 10;
+  }
+  .app-header .brand {
+    font-family: var(--font-serif); font-size: 18px;
+    color: var(--ink); letter-spacing: -0.01em;
+  }
+  .app-header .status {
+    font-size: 12px; color: var(--ink-muted);
+    letter-spacing: 0.08em;
+  }
+  .app-header .status strong {
+    color: var(--ink); font-weight: 600;
+  }
+
+  /* ===== LANDING ===== */
+  .landing {
+    text-align: center; padding: 32px 20px;
+    justify-content: center; overflow-y: auto;
+  }
+  .landing h1 {
+    font-family: var(--font-serif);
+    font-size: 52px; font-weight: 400;
+    letter-spacing: -0.02em; margin-bottom: 8px;
+  }
+  .landing .subtitle {
+    font-size: 14px; color: var(--ink-muted);
+    margin-bottom: 32px; letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .landing .rules {
+    text-align: left; background: transparent;
+    border: 1px solid var(--border); border-radius: 2px;
+    padding: 24px; margin-bottom: 32px;
+    max-width: 400px; margin-left: auto; margin-right: auto;
+  }
+  .landing .rules h2 {
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.14em; color: var(--ink-faint);
+    margin-bottom: 16px; font-weight: 500;
+  }
+  .landing .rules ul {
+    list-style: none; font-size: 14px;
+    color: var(--ink-muted);
+  }
+  .landing .rules li {
+    margin-bottom: 8px; padding-left: 18px;
+    position: relative;
+  }
+  .landing .rules li::before {
+    content: "•"; color: var(--accent);
+    position: absolute; left: 0;
+  }
+  .btn-primary {
+    width: 100%; max-width: 400px;
+    margin-left: auto; margin-right: auto;
+    display: block; background: transparent;
+    color: var(--ink); border: 1px solid var(--ink-muted);
+    border-radius: 0; padding: 16px 40px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .25s ease;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    font-family: var(--font-sans);
+  }
+  .btn-primary:hover {
+    background: var(--ink); color: var(--bg);
+    border-color: var(--ink);
+  }
+  .btn-primary.copied { background: var(--green); border-color: var(--green); color: var(--bg); }
+
+  /* ===== GAME SCREEN ===== */
+  .game-main {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .game-photo-area {
+    flex: 1; min-height: 0;
+    position: relative;
+    background: var(--bg-elevated);
+    overflow: hidden;
+  }
+  .game-photo-area img {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block; transition: transform 0.3s ease;
+  }
+  .photo-zoom-controls {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    display: flex; flex-direction: column;
+    gap: 6px; z-index: 3;
+  }
+  .photo-zoom-controls button {
+    width: 32px; height: 32px;
+    background: rgba(12,12,12,0.7);
+    border: 1px solid var(--border);
+    color: var(--ink); font-size: 16px;
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .zoom-level {
+    position: absolute; right: 12px; bottom: 12px;
+    font-size: 10px; color: var(--ink-faint);
+    background: rgba(12,12,12,0.7);
+    padding: 2px 6px; border: 1px solid var(--border);
+    z-index: 3; letter-spacing: 0.1em;
+  }
+  .game-photo-area::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 60px;
+    background: linear-gradient(180deg, transparent, var(--bg));
+    pointer-events: none; z-index: 2;
+  }
+
+  .game-controls {
+    padding: 20px 24px 28px;
+    display: flex; flex-direction: column;
+    gap: 14px; flex-shrink: 0;
+  }
+  .year-display {
+    font-family: var(--font-serif);
+    font-size: clamp(48px, 12vw, 72px);
+    text-align: center; line-height: 1;
+    color: var(--ink); letter-spacing: -0.02em;
+    cursor: pointer;
+  }
+  .year-hint {
+    text-align: center;
+    font-size: 11px; color: var(--ink-faint);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-top: -6px;
+  }
+  .slider-wrap {
+    position: relative; padding: 6px 0;
+  }
+  .slider-track {
+    width: 100%; height: 2px;
+    background: var(--border); border-radius: 1px;
+    position: relative;
+  }
+  .slider-range {
+    position: absolute; left: 0; top: -1px;
+    height: 4px; background: var(--accent-dim);
+    border-radius: 2px;
+  }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px;
+    background: transparent; position: relative; z-index: 2;
+    margin: -3px 0 0;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%; border: 2px solid var(--ink);
+    background: var(--bg); cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 20px; height: 20px;
+    border-radius: 50%; border: 2px solid var(--ink);
+    background: var(--bg); cursor: pointer;
+  }
+  .slider-labels {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--ink-faint);
+    margin-top: 6px;
+  }
+  .guess-input {
+    display: flex; gap: 0;
+    border: 1px solid var(--border);
+  }
+  .guess-input input {
+    flex: 1; background: transparent;
+    border: none; color: var(--ink);
+    padding: 14px 16px; font-size: 16px;
+    font-family: var(--font-sans);
+    outline: none;
+  }
+  .guess-input input::placeholder { color: var(--ink-faint); }
+  .guess-input button {
+    background: transparent; color: var(--ink);
+    border: none; border-left: 1px solid var(--border);
+    padding: 14px 24px; font-size: 12px;
+    font-weight: 600; cursor: pointer;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    font-family: var(--font-sans);
+  }
+  .guess-input button:hover { background: var(--ink); color: var(--bg); }
+  .toggle-mode {
+    text-align: center;
+    font-size: 12px; color: var(--ink-muted);
+    text-decoration: underline;
+    cursor: pointer; letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .toggle-mode:hover { color: var(--ink); }
+  .submit-btn {
+    width: 100%; background: transparent;
+    color: var(--ink); border: 1px solid var(--ink-muted);
+    border-radius: 0; padding: 16px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .25s ease;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    font-family: var(--font-sans);
+  }
+  .submit-btn:hover {
+    background: var(--ink); color: var(--bg);
+    border-color: var(--ink);
+  }
+
+  /* ===== REVEAL SCREEN ===== */
+  .reveal-screen {
+    flex-direction: column;
+    height: 100vh; height: 100dvh;
+    overflow: hidden;
+  }
+  .reveal-photo {
+    position: relative; width: 100%;
+    flex: 0 0 auto; min-height: 28vh;
+    max-height: 36vh;
+    overflow: hidden;
+    background: var(--bg-elevated);
+  }
+  .reveal-photo img {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block; opacity: 0.9;
+  }
+  .reveal-photo::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 80px;
+    background: linear-gradient(180deg, transparent, var(--bg));
+    pointer-events: none;
+  }
+  .reveal-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(34,34,34,0.25) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,34,34,0.25) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 1;
+  }
+  .reveal-corner {
+    position: absolute; width: 20px; height: 20px;
+    border-color: var(--amber); opacity: 0.5;
+    pointer-events: none; z-index: 2;
+  }
+  .reveal-corner.tl { top: 12px; left: 12px; border-top: 2px solid; border-left: 2px solid; }
+  .reveal-corner.tr { top: 12px; right: 12px; border-top: 2px solid; border-right: 2px solid; }
+  .reveal-corner.bl { bottom: 12px; left: 12px; border-bottom: 2px solid; border-left: 2px solid; }
+  .reveal-corner.br { bottom: 12px; right: 12px; border-bottom: 2px solid; border-right: 2px solid; }
+
+  .reveal-content {
+    flex: 1 1 auto; min-height: 0;
+    overflow-y: auto;
+    padding: 0 24px 32px;
+    display: flex; flex-direction: column;
+    gap: 20px;
+    scroll-behavior: auto;
+  }
+
+  /* Beat 1: Hero */
+  .reveal-hero {
+    text-align: center; margin-top: -16px;
+    position: relative; z-index: 2;
+  }
+  .reveal-year {
+    font-family: var(--font-serif);
+    font-size: clamp(64px, 16vw, 96px);
+    font-weight: 400; color: var(--ink);
+    line-height: 0.95; letter-spacing: -0.03em;
+  }
+  .reveal-stamp {
+    display: inline-block; margin-top: 8px;
+    padding: 5px 16px; border: 2px solid;
+    font-size: 11px; letter-spacing: 0.2em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .reveal-stamp.bullseye { color: var(--green); border-color: var(--green); transform: rotate(-1deg); }
+  .reveal-stamp.close { color: var(--amber); border-color: var(--amber); transform: rotate(-1deg); }
+  .reveal-stamp.near { color: var(--yellow); border-color: var(--yellow); }
+  .reveal-stamp.wayoff { color: var(--cool); border-color: var(--cool); transform: rotate(1deg); }
+  .reveal-stamp.heartbreak { color: var(--red); border-color: var(--red); transform: rotate(-2deg); animation: heartbeat 1s ease-in-out 3; }
+
+  /* Beat 2: Score */
+  .reveal-score {
+    text-align: center;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+  }
+  .reveal-scoreline {
+    font-size: 14px; color: var(--ink-muted);
+    letter-spacing: 0.04em;
+  }
+  .reveal-scoreline strong { color: var(--ink); font-weight: 600; }
+  .reveal-points {
+    font-family: var(--font-serif);
+    font-size: 48px; color: var(--accent);
+    line-height: 1; margin-top: 4px;
+  }
+  .reveal-points span { font-size: 18px; color: var(--ink-muted); }
+
+  /* Heartbreak close text */
+  .heartbreak-text {
+    font-size: 12px; color: var(--red);
+    margin-top: 6px; letter-spacing: 0.1em;
+    text-transform: uppercase; font-weight: 600;
+  }
+
+  /* Beat 3: Credit */
+  .reveal-credit {
+    text-align: center;
+  }
+  .reveal-credit .photographer {
+    font-family: var(--font-serif);
+    font-size: 17px; color: var(--ink);
+    font-style: italic;
+  }
+  .reveal-credit .location {
+    font-size: 12px; color: var(--ink-muted);
+    letter-spacing: 0.06em; margin-top: 3px;
+  }
+
+  /* Beat 4: Clues */
+  .reveal-clues {
+    background: var(--bg-elevated);
+    border-left: 3px solid var(--amber);
+    padding: 16px 18px;
+  }
+  .reveal-clues-header {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 8px;
+  }
+  .reveal-clues-header .icon { font-size: 16px; }
+  .reveal-clues-header .label {
+    font-size: 10px; color: var(--amber);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    font-weight: 600;
+  }
+  .reveal-clues-text {
+    font-size: 13px; color: var(--ink-muted);
+    line-height: 1.6;
+  }
+
+  /* Global wisdom stat */
+  .global-wisdom {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .global-wisdom-label {
+    font-size: 10px; color: var(--ink-faint);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .global-wisdom-bar {
+    display: flex; height: 6px;
+    background: var(--border);
+    border-radius: 3px; overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .global-wisdom-fill {
+    background: var(--accent-dim);
+    border-radius: 3px; transition: width 0.8s ease;
+  }
+  .global-wisdom-text {
+    font-size: 13px; color: var(--ink-muted);
+  }
+  .global-wisdom-text strong { color: var(--ink); }
+
+  /* Beat 5: CTA */
+  .reveal-cta { margin-top: 4px; }
+  .reveal-dots {
+    display: flex; justify-content: center;
+    gap: 8px; margin-top: 14px;
+  }
+  .reveal-dots span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--border);
+  }
+  .reveal-dots span.done { background: var(--accent-dim); }
+  .reveal-dots span.current { background: var(--ink); }
+
+  /* Tier photo treatments */
+  .reveal-photo.tier-bullseye { box-shadow: inset 0 -60px 60px -40px rgba(106,170,100,0.12); }
+  .reveal-photo.tier-close { box-shadow: inset 0 -60px 60px -40px rgba(201,169,110,0.1); }
+  .reveal-photo.tier-wayoff { box-shadow: inset 0 -60px 60px -40px rgba(90,100,110,0.06); }
+
+  /* Shake animation for heartbreak */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+  .shake-screen { animation: shake 0.4s ease-in-out; }
+
+  @keyframes heartbeat {
+    0%, 100% { transform: rotate(-2deg) scale(1); }
+    50% { transform: rotate(-2deg) scale(1.06); }
+  }
+
+  /* ===== END SCREEN ===== */
+  .end-screen {
+    padding: 32px 24px; overflow-y: auto;
+    text-align: center;
+  }
+  .end-screen h2 {
+    font-family: var(--font-serif);
+    font-size: 36px; font-weight: 400;
+    margin-bottom: 4px;
+  }
+  .end-screen .end-sub {
+    font-size: 14px; color: var(--ink-muted);
+    margin-bottom: 24px; letter-spacing: 0.04em;
+  }
+  .end-score-big {
+    font-family: var(--font-serif);
+    font-size: 80px; color: var(--accent);
+    line-height: 1; margin-bottom: 4px;
+  }
+  .end-score-big span { font-size: 32px; color: var(--ink-muted); }
+  .end-badge {
+    font-size: 13px; color: var(--amber);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    font-weight: 600; margin-bottom: 20px;
+  }
+  .end-avg {
+    font-size: 14px; color: var(--ink-muted);
+    margin-bottom: 28px; letter-spacing: 0.04em;
+  }
+  .end-avg strong { color: var(--ink); font-weight: 600; }
+
+  /* Round breakdown */
+  .round-breakdown {
+    margin-bottom: 28px;
+  }
+  .round-item {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .round-item:last-child { border-bottom: none; }
+  .round-left {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .round-num {
+    font-size: 11px; color: var(--ink-faint);
+    letter-spacing: 0.1em; width: 32px; text-align: left;
+  }
+  .round-delta {
+    font-size: 14px; color: var(--ink-muted);
+  }
+  .round-delta strong { color: var(--ink); }
+  .round-emoji {
+    font-size: 18px;
+  }
+  .round-points {
+    font-size: 14px; color: var(--accent);
+    font-weight: 600; letter-spacing: 0.04em;
+  }
+
+  .share-preview {
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 2px; padding: 16px;
+    margin-bottom: 20px; text-align: left;
+    font-family: "SF Mono", Monaco, monospace;
+    font-size: 12px; line-height: 1.5; color: #aaa;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .end-buttons {
+    display: flex; flex-direction: column;
+    gap: 10px;
+  }
+  .end-buttons .btn-secondary {
+    width: 100%; max-width: 400px;
+    margin-left: auto; margin-right: auto;
+    display: block; background: transparent;
+    color: var(--ink-muted); border: 1px solid var(--border);
+    border-radius: 0; padding: 12px 24px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all .25s ease;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    font-family: var(--font-sans);
+  }
+  .end-buttons .btn-secondary:hover {
+    border-color: var(--ink-muted); color: var(--ink);
+  }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes popIn {
+    0% { opacity: 0; transform: scale(0.85); }
+    60% { transform: scale(1.04); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes stampIn {
+    0% { opacity: 0; transform: scale(1.3) rotate(-4deg); }
+    100% { opacity: 1; transform: scale(1) rotate(-1deg); }
+  }
+  .beat { animation: fadeUp 0.45s ease-out both; }
+  .beat-1 { animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+  .beat-2 { animation: fadeUp 0.45s ease-out 0.25s both; }
+  .beat-3 { animation: fadeUp 0.45s ease-out 0.5s both; }
+  .beat-4 { animation: fadeUp 0.45s ease-out 0.75s both; }
+  .beat-5 { animation: fadeUp 0.45s ease-out 1s both; }
+  .beat-6 { animation: fadeUp 0.45s ease-out 1.1s both; }
+  .stamp-anim { animation: stampIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.15s both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .beat, .beat-1, .beat-2, .beat-3, .beat-4, .beat-5, .beat-6, .stamp-anim {
+      animation: none !important; opacity: 1 !important; transform: none !important;
+    }
+    .shake-screen, .reveal-stamp.heartbreak { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Landing -->
+  <div class="screen active" id="landing">
+    <div class="landing">
+      <h1>Decade</h1>
+      <div class="subtitle">Daily Visual Puzzle</div>
+      <div class="rules">
+        <h2>How to Play</h2>
+        <ul>
+          <li>Guess the year of each photograph</li>
+          <li>Closer guesses score more points</li>
+          <li>5 photos per day. 25 points max.</li>
+          <li>Learn what gives each era away</li>
+        </ul>
+      </div>
+      <button class="btn-primary" onclick="startGame()">Play Today's Game</button>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div class="screen" id="playing">
+    <div class="app-header">
+      <div class="brand">Decade</div>
+      <div class="status" id="game-status">1 / 5 · <strong>0 PTS</strong></div>
+    </div>
+    <div class="game-main">
+      <div class="game-photo-area" id="photo-area">
+        <img id="game-img" src="" alt="">
+        <div class="photo-zoom-controls">
+          <button onclick="zoomIn()">+</button>
+          <button onclick="zoomOut()">−</button>
+          <button onclick="zoomReset()">↻</button>
+        </div>
+        <div class="zoom-level" id="zoom-level">1.0×</div>
+      </div>
+      <div class="game-controls">
+        <div class="year-display" id="year-display" onclick="focusInput()">1977</div>
+        <div class="year-hint" id="year-hint">Click to type a year</div>
+        <div class="slider-wrap" id="slider-mode">
+          <div class="slider-track"><div class="slider-range" id="slider-range"></div></div>
+          <input type="range" id="year-slider" min="1935" max="2020" value="1977" oninput="onSliderChange(this.value)">
+          <div class="slider-labels"><span>1935</span><span>2020</span></div>
+        </div>
+        <div class="guess-input" id="input-mode" style="display:none">
+          <input type="number" id="year-input" placeholder="Enter year" min="1935" max="2020">
+          <button onclick="submitGuess()">Submit</button>
+        </div>
+        <div class="toggle-mode" id="mode-toggle" onclick="toggleMode()">Switch to Numeric Input</div>
+        <button class="submit-btn" onclick="submitGuess()">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reveal -->
+  <div class="screen reveal-screen" id="reveal">
+    <div class="reveal-photo" id="reveal-photo">
+      <img id="reveal-img" src="" alt="">
+      <div class="reveal-grid"></div>
+      <div class="reveal-corner tl"></div>
+      <div class="reveal-corner tr"></div>
+      <div class="reveal-corner bl"></div>
+      <div class="reveal-corner br"></div>
+    </div>
+    <div class="reveal-content" id="reveal-scroll">
+      <div class="reveal-hero beat-1">
+        <div class="reveal-year" id="reveal-year">1939</div>
+        <div class="reveal-stamp" id="reveal-stamp">Close Call</div>
+        <div class="heartbreak-text" id="heartbreak-text" style="display:none"></div>
+      </div>
+      <div class="reveal-score beat-2">
+        <div class="reveal-scoreline" id="reveal-scoreline">Your guess was <strong>1942</strong> — <strong>3 years off</strong></div>
+        <div class="reveal-points" id="reveal-points">+4<span>/5 pts</span></div>
+      </div>
+      <div class="reveal-credit beat-3">
+        <div class="photographer" id="reveal-photographer">Dorothea Lange</div>
+        <div class="location" id="reveal-location">Tulare County, California</div>
+      </div>
+      <div class="reveal-clues beat-4">
+        <div class="reveal-clues-header">
+          <span class="icon">🔍</span>
+          <span class="label">What gives it away</span>
+        </div>
+        <div class="reveal-clues-text" id="reveal-clues"></div>
+      </div>
+      <div class="global-wisdom beat-5" id="global-wisdom" style="display:none">
+        <div class="global-wisdom-label">Global Wisdom</div>
+        <div class="global-wisdom-bar"><div class="global-wisdom-fill" id="wisdom-fill"></div></div>
+        <div class="global-wisdom-text" id="wisdom-text"></div>
+      </div>
+      <div class="reveal-cta beat-6">
+        <button class="btn-primary" onclick="nextPhoto()">Next Photograph</button>
+        <div class="reveal-dots" id="reveal-dots"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- End -->
+  <div class="screen end-screen" id="end">
+    <div class="end-screen">
+      <h2>Today's Decade</h2>
+      <div class="end-sub" id="end-date"></div>
+      <div class="end-score-big" id="end-score"></div>
+      <div class="end-badge" id="end-badge"></div>
+      <div class="end-avg" id="end-avg"></div>
+      <div class="round-breakdown" id="round-breakdown"></div>
+      <div class="share-preview" id="share-text"></div>
+      <div class="end-buttons">
+        <button class="btn-primary" onclick="copyShare()">Copy Results</button>
+        <button class="btn-secondary" onclick="copyChallengeLink()">Copy Challenge Link</button>
+        <button class="btn-secondary" onclick="location.reload()">Play Again</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="data.js?v=5"></script>
+<script>
+
+let currentPhoto = 0;
+let guesses = [];
+let useSlider = true;
+let zoomScale = 1.0;
+let dailyPhotos = [];
+let audioCtx = null;
+
+function $(id) { return document.getElementById(id); }
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+function getDailySeed() {
+  const params = new URLSearchParams(location.search);
+  const seedParam = params.get('seed');
+  if (seedParam) {
+    return parseInt(seedParam);
+  }
+  const d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth()+1) * 100 + d.getDate();
+}
+
+function pickDailyPhotos() {
+  const seed = getDailySeed();
+  const rng = seededRandom(seed);
+  const pool = [...PHOTO_BANK_VINTAGE];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  dailyPhotos = pool.slice(0, 5);
+}
+
+function startGame() {
+  currentPhoto = 0;
+  guesses = [];
+  pickDailyPhotos();
+  showScreen('playing');
+  loadPhoto();
+}
+
+function loadPhoto() {
+  const p = dailyPhotos[currentPhoto];
+  $('game-img').src = p.url;
+  $('game-img').style.transform = 'scale(1)';
+  zoomScale = 1.0;
+  $('zoom-level').textContent = '1.0\u00d7';
+  $('game-status').innerHTML = (currentPhoto + 1) + ' / 5 \u00b7 <strong>' + getTotalPoints() + ' PTS</strong>';
+  $('year-slider').value = 1977;
+  $('year-display').textContent = '1977';
+  $('year-input').value = '';
+  updateSliderRange(1977);
+}
+
+function getTotalPoints() {
+  let total = 0;
+  for (let i = 0; i < guesses.length; i++) {
+    total += getPoints(Math.abs(guesses[i] - dailyPhotos[i].year));
+  }
+  return total;
+}
+
+function updateSliderRange(val) {
+  const pct = (val - 1935) / (2020 - 1935) * 100;
+  $('slider-range').style.width = pct + '%';
+}
+
+function onSliderChange(val) {
+  $('year-display').textContent = val;
+  updateSliderRange(val);
+}
+
+function toggleMode() {
+  useSlider = !useSlider;
+  $('slider-mode').style.display = useSlider ? 'block' : 'none';
+  $('input-mode').style.display = useSlider ? 'none' : 'flex';
+  $('mode-toggle').textContent = useSlider ? 'Switch to Numeric Input' : 'Switch to Slider';
+}
+
+function focusInput() {
+  if (useSlider) {
+    toggleMode();
+  }
+  setTimeout(() => $('year-input').focus(), 50);
+}
+
+function submitGuess() {
+  const val = useSlider ? parseInt($('year-slider').value) : parseInt($('year-input').value);
+  if (!val || val < 1935 || val > 2020) return;
+  guesses.push(val);
+  showReveal();
+}
+
+function getTier(delta) {
+  if (delta === 0) return { name: 'Bullseye', cls: 'bullseye', label: 'Perfect Read' };
+  if (delta <= 1) return { name: 'Close', cls: 'close', label: 'Close Call' };
+  if (delta <= 3) return { name: 'Close', cls: 'close', label: 'Close Call' };
+  if (delta <= 7) return { name: 'Near', cls: 'near', label: 'Near Miss' };
+  return { name: 'Way Off', cls: 'wayoff', label: 'Intriguing Miss' };
+}
+
+function getPoints(delta) {
+  if (delta === 0) return 5;
+  if (delta <= 1) return 4;
+  if (delta <= 3) return 3;
+  if (delta <= 5) return 2;
+  if (delta <= 7) return 1;
+  return 0;
+}
+
+function getShareEmoji(delta) {
+  if (delta === 0) return '\ud83d\udc8e';
+  if (delta <= 3) return '\ud83d\udfe9';
+  if (delta <= 7) return '\ud83d\udfe7';
+  return '\ud83d\udfe5';
+}
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playChime() {
+  initAudio();
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, now);
+  osc.frequency.setValueAtTime(1100, now + 0.08);
+  gain.gain.setValueAtTime(0.15, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+  osc.start(now);
+  osc.stop(now + 0.5);
+  const osc2 = audioCtx.createOscillator();
+  const gain2 = audioCtx.createGain();
+  osc2.connect(gain2);
+  gain2.connect(audioCtx.destination);
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(1320, now + 0.05);
+  gain2.gain.setValueAtTime(0.08, now + 0.05);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+  osc2.start(now + 0.05);
+  osc2.stop(now + 0.6);
+}
+
+function playThud() {
+  initAudio();
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(120, now);
+  osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+  gain.gain.setValueAtTime(0.2, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+  osc.start(now);
+  osc.stop(now + 0.35);
+}
+
+function playClose() {
+  initAudio();
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(600, now);
+  osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+  gain.gain.setValueAtTime(0.1, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  osc.start(now);
+  osc.stop(now + 0.2);
+}
+
+function getGlobalWisdom(photo, guess) {
+  const seed = photo.year * 10000 + guess;
+  const rng = seededRandom(seed);
+  const pct = Math.floor(30 + rng() * 55);
+  const direction = guess < photo.year ? 'earlier' : 'later';
+  const agreement = Math.abs(guess - photo.year) <= 5;
+  if (agreement) {
+    return { pct: pct, text: pct + '% of players saw the same era clues you did' };
+  }
+  return { pct: pct, text: pct + '% of players guessed ' + direction + ' than this' };
+}
+
+function showReveal() {
+  const p = dailyPhotos[currentPhoto];
+  const guess = guesses[currentPhoto];
+  const delta = Math.abs(guess - p.year);
+  const points = getPoints(delta);
+  const tier = getTier(delta);
+
+  $('reveal-img').src = p.url;
+  $('reveal-photo').className = 'reveal-photo tier-' + tier.cls;
+  $('reveal-year').textContent = p.year;
+
+  const stamp = $('reveal-stamp');
+  const isHeartbreak = delta >= 1 && delta <= 2;
+  stamp.className = 'reveal-stamp ' + (isHeartbreak ? 'heartbreak' : tier.cls) + ' stamp-anim';
+  stamp.textContent = isHeartbreak ? 'So Close \u2014 ' + delta + 'y off!' : tier.label;
+
+  $('reveal-scoreline').innerHTML = 'Your guess was <strong>' + guess + '</strong> \u2014 <strong>' + delta + ' year' + (delta !== 1 ? 's' : '') + ' off</strong>';
+  $('reveal-points').innerHTML = '+' + points + '<span>/5 pts</span>';
+  $('reveal-photographer').textContent = p.photographer;
+  $('reveal-location').textContent = p.location;
+  $('reveal-clues').textContent = p.eraNote;
+
+  const hb = $('heartbreak-text');
+  if (isHeartbreak) {
+    hb.style.display = 'block';
+    hb.textContent = delta === 1 ? 'One. Year. Away.' : 'Almost had it.';
+  } else {
+    hb.style.display = 'none';
+  }
+
+  const wisdom = getGlobalWisdom(p, guess);
+  $('global-wisdom').style.display = 'block';
+  $('wisdom-fill').style.width = '0%';
+  $('wisdom-text').innerHTML = 'You guessed <strong>' + guess + '</strong>; ' + wisdom.text;
+  setTimeout(() => { $('wisdom-fill').style.width = wisdom.pct + '%'; }, 300);
+
+  const dots = $('reveal-dots');
+  dots.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const span = document.createElement('span');
+    if (i < currentPhoto) span.className = 'done';
+    else if (i === currentPhoto) span.className = 'current';
+    dots.appendChild(span);
+  }
+
+  document.querySelectorAll('.beat-1, .beat-2, .beat-3, .beat-4, .beat-5, .beat-6').forEach(el => {
+    el.style.animation = 'none';
+    el.offsetHeight;
+    el.style.animation = '';
+  });
+
+  $('reveal-scroll').scrollTop = 0;
+
+  if (delta === 0) playChime();
+  else if (delta <= 2) playClose();
+  else playThud();
+
+  if (isHeartbreak) {
+    document.getElementById('reveal').classList.add('shake-screen');
+    setTimeout(() => document.getElementById('reveal').classList.remove('shake-screen'), 400);
+  }
+
+  showScreen('reveal');
+}
+
+function nextPhoto() {
+  currentPhoto++;
+  if (currentPhoto >= dailyPhotos.length) {
+    showEnd();
+  } else {
+    showScreen('playing');
+    loadPhoto();
+  }
+}
+
+function getMilestone(avgMiss) {
+  if (avgMiss === 0) return { title: 'Chronological Oracle', icon: '\ud83d\udc51' };
+  if (avgMiss < 3) return { title: 'Chronological Master', icon: '\u2764\ufe0f' };
+  if (avgMiss < 7) return { title: 'History Buff', icon: '\ud83d\udcda' };
+  if (avgMiss < 12) return { title: 'Era Explorer', icon: '\ud83d\udd0d' };
+  if (avgMiss < 20) return { title: 'Time Traveler', icon: '\ud83d\ude80' };
+  return { title: 'Chronological Chaos', icon: '\ud83c\udf00' };
+}
+
+function showEnd() {
+  const total = getTotalPoints();
+  const d = new Date();
+
+  let totalDelta = 0;
+  for (let i = 0; i < 5; i++) {
+    totalDelta += Math.abs(guesses[i] - dailyPhotos[i].year);
+  }
+  const avgMiss = (totalDelta / 5).toFixed(1);
+  const milestone = getMilestone(parseFloat(avgMiss));
+
+  $('end-date').textContent = d.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+  $('end-score').innerHTML = total + '<span>/25</span>';
+  $('end-badge').innerHTML = milestone.icon + ' ' + milestone.title;
+  $('end-avg').innerHTML = 'Average miss: <strong>' + avgMiss + ' years</strong>';
+
+  const breakdown = $('round-breakdown');
+  breakdown.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const dlt = Math.abs(guesses[i] - dailyPhotos[i].year);
+    const pts = getPoints(dlt);
+    const emoji = getShareEmoji(dlt);
+    const item = document.createElement('div');
+    item.className = 'round-item';
+    item.innerHTML = '<div class="round-left"><span class="round-num">R' + (i+1) + '</span><span class="round-delta">off by <strong>' + dlt + 'y</strong></span></div><div><span class="round-emoji">' + emoji + '</span> <span class="round-points">+' + pts + '</span></div>';
+    breakdown.appendChild(item);
+  }
+
+  const dateStr = d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+  let share = 'Decade \u00b7 ' + dateStr + '\n';
+  share += total + '/25 \u00b7 avg miss ' + avgMiss + ' years\n\n';
+  for (let i = 0; i < 5; i++) {
+    const dlt = Math.abs(guesses[i] - dailyPhotos[i].year);
+    share += '\ud83d\udcf8  (off by ' + dlt + ') ' + getShareEmoji(dlt) + '\n';
+  }
+  share += '\n' + milestone.icon + ' ' + milestone.title;
+
+  $('share-text').textContent = share;
+  showScreen('end');
+}
+
+function copyShare() {
+  navigator.clipboard.writeText($('share-text').textContent).then(() => {
+    const btn = document.querySelectorAll('.end-buttons .btn-primary')[0];
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function copyChallengeLink() {
+  const seed = getDailySeed();
+  const url = location.origin + location.pathname + '?seed=' + seed;
+  navigator.clipboard.writeText(url).then(() => {
+    const btns = document.querySelectorAll('.end-buttons .btn-secondary');
+    const btn = btns[0];
+    const orig = btn.textContent;
+    btn.textContent = 'Link Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function zoomIn() {
+  zoomScale = Math.min(zoomScale + 0.25, 3);
+  $('game-img').style.transform = 'scale(' + zoomScale + ')';
+  $('zoom-level').textContent = zoomScale.toFixed(1) + '\u00d7';
+}
+function zoomOut() {
+  zoomScale = Math.max(zoomScale - 0.25, 1);
+  $('game-img').style.transform = 'scale(' + zoomScale + ')';
+  $('zoom-level').textContent = zoomScale.toFixed(1) + '\u00d7';
+}
+function zoomReset() {
+  zoomScale = 1;
+  $('game-img').style.transform = 'scale(1)';
+  $('zoom-level').textContent = '1.0\u00d7';
+}
+
+$('year-input').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') submitGuess();
+});
+</script>
+</body>
+</html>
