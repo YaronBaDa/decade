@@ -167,11 +167,22 @@
     font-size: clamp(48px, 12vw, 72px);
     text-align: center; line-height: 1;
     color: var(--ink); letter-spacing: -0.02em;
-    cursor: pointer;
+    cursor: text;
     border: 1px solid var(--ink-muted);
     padding: 12px 32px;
     display: inline-block;
     align-self: center;
+    background: transparent;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  .year-display::-webkit-outer-spin-button,
+  .year-display::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .year-display:focus {
+    border-color: var(--ink);
   }
   .year-hint {
     text-align: center;
@@ -180,13 +191,18 @@
     margin-top: 4px;
   }
   .slider-wrap {
-    position: relative; padding: 6px 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 20px;
     margin-top: 8px;
   }
   .slider-track {
     width: 100%; height: 2px;
     background: var(--border); border-radius: 1px;
-    position: relative;
+    position: absolute;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
   }
   .slider-range {
     position: absolute; left: 0; top: 0;
@@ -195,9 +211,10 @@
   }
   input[type=range] {
     -webkit-appearance: none; appearance: none;
-    width: 100%; height: 2px;
-    background: transparent; position: absolute; top: 0; left: 0;
+    width: 100%; height: 20px;
+    background: transparent; position: relative;
     margin: 0; padding: 0;
+    z-index: 2;
   }
   input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
@@ -617,7 +634,7 @@
         <div class="zoom-level" id="zoom-level">1.0×</div>
       </div>
       <div class="game-controls">
-        <div class="year-display" id="year-display" onclick="focusInput()">1977</div>
+        <input type="number" class="year-display" id="year-display" min="1935" max="2020" value="1977" oninput="onYearInput(this.value)">
         <div class="year-hint" id="year-hint">Click to type a year</div>
         <div class="slider-wrap" id="slider-mode">
           <div class="slider-track"><div class="slider-range" id="slider-range"></div></div>
@@ -752,7 +769,7 @@ function loadPhoto() {
   $('zoom-level').textContent = '1.0\u00d7';
   $('game-status').innerHTML = (currentPhoto + 1) + ' / 5 \u00b7 <strong>' + getTotalPoints() + ' PTS</strong>';
   $('year-slider').value = 1977;
-  $('year-display').textContent = '1977';
+  $('year-display').value = 1977;
   updateSliderRange(1977);
 }
 
@@ -770,8 +787,19 @@ function updateSliderRange(val) {
 }
 
 function onSliderChange(val) {
-  $('year-display').textContent = val;
+  $('year-display').value = val;
   updateSliderRange(val);
+}
+
+function onYearInput(val) {
+  const year = parseInt(val, 10);
+  if (isNaN(year)) {
+    updateSliderRange(1935);
+    return;
+  }
+  const clamped = Math.max(1935, Math.min(2020, year));
+  $('year-slider').value = clamped;
+  updateSliderRange(clamped);
 }
 
 function toggleMode() {
@@ -789,8 +817,12 @@ function focusInput() {
 }
 
 function submitGuess() {
-  const val = parseInt($('year-slider').value);
-  if (!val || val < 1935 || val > 2020) return;
+  let val = parseInt($('year-display').value, 10);
+  if (isNaN(val)) return;
+  val = Math.max(1935, Math.min(2020, val));
+  $('year-display').value = val;
+  $('year-slider').value = val;
+  updateSliderRange(val);
   guesses.push(val);
   showReveal();
 }
